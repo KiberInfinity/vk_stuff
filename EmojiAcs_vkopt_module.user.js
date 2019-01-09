@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EmojiAcs [vkopt module]
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Увеличение размеров блока со стикерами и отключение его автоматического скрытия при убирании курсора
 // @author       KiberInfinity
 // @match        https://vk.com/*
@@ -39,23 +39,27 @@ vkopt['emoji_acs'] = {
          .emoji_tt_wrap.tt_down:after, .emoji_tt_wrap.tt_down:before {
              right: 63px;
          }
+         .emoji_smiles_row{
+            display: inline-block;
+         }
          */
       }).css;
    },
    onLibFiles: function(fn){
-      if (/(^|\/)emoji.js/.test(fn))
-
-      Inj.End('Emoji.ttClick', function(id,el,b1,b2,ev){
-         var opts = Emoji.opts[id];
-         //vkopt.log(id, opts);
-         if (opts.emojiBtn)
-            opts.emojiBtn.onmouseout = function(){};
-         if (opts.obj)
-            opts.obj.onmouseout = function(){};
-         if (opts.tt)
-         opts.tt.onmouseout = function(){};
-      });
+      if (/(^|\/)emoji.js/.test(fn)){
+          Inj.End('Emoji.ttClick', function(id,el,b1,b2,ev){
+              var opts = Emoji.opts[id];
+              //vkopt.log(id, opts);
+              if (opts.emojiBtn)
+                  opts.emojiBtn.onmouseout = function(){};
+              if (opts.obj)
+                  opts.obj.onmouseout = function(){};
+              if (opts.tt)
+                  opts.tt.onmouseout = function(){};
+              opts.scrollStarted = true;
+              setTimeout(function(){opts.scrollStarted = false;},200)
+          });
+      }
    }
 }
 if (window.vkopt_core_ready) vkopt_core.plugins.delayed_run('emoji_acs');
-
