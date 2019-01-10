@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EmojiAcs [vkopt module]
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Увеличение размеров блока со стикерами и отключение его автоматического скрытия при убирании курсора
 // @author       KiberInfinity
 // @match        https://vk.com/*
@@ -42,6 +42,13 @@ vkopt['emoji_acs'] = {
          .emoji_smiles_row{
             display: inline-block;
          }
+         .emoji_tabs_r_s {
+             margin-left: auto;
+             right: 27px;
+         }
+         .emoji_tabs_wrap {
+             width: 304px;
+         }
          */
       }).css;
    },
@@ -56,6 +63,8 @@ vkopt['emoji_acs'] = {
                   opts.obj.onmouseout = function(){};
               if (opts.tt)
                   opts.tt.onmouseout = function(){};
+              //beautify tabs icons for zoom
+              domQuery('.emoji_tab_img_cont img').forEach(function(el){el.src = el.src.replace(/(\d+-\d+-thumb-)(\d+)/,'$144')});
               opts.scrollStarted = true;
               setTimeout(function(){opts.scrollStarted = false;},200)
           });
