@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AuViDL [vkopt module]
 // @namespace    http://tampermonkey.net/
-// @version      3.0.7.7
+// @version      3.0.7.8
 // @description  Опции скачивания аудио и видео
 // @author       KiberInfinity
 // @match        https://vk.com/*
@@ -148,7 +148,9 @@ vkopt['audl'] = {
    },
    onLibFiles: function(fn){
       if (fn == 'audioplayer.js'){
-         Inj.Start('AudioPlayerHTML5.prototype._isHlsUrl', function(url,obj){
+         var pl = window.getAudioPlayer && getAudioPlayer();
+         if (pl && pl._impl && Object.getPrototypeOf(pl._impl)._isHlsUrl)
+         Inj.Start('Object.getPrototypeOf(getAudioPlayer()._impl)._isHlsUrl', function(url,obj){
             if (obj && obj.get_url)
                obj.url = url;
          })
@@ -476,7 +478,8 @@ vkopt['audl'] = {
       var orig = RegExp.prototype.test;
       RegExp.prototype.test = function(){return false}
       try{
-         AudioPlayerHTML5.prototype._setAudioNodeUrl(tmp, url);
+         var h5proto = Object.getPrototypeOf(getAudioPlayer()._impl);
+         h5proto._setAudioNodeUrl(tmp, url);
       }catch(e){}
       RegExp.prototype.test = orig;
       return tmp.src
