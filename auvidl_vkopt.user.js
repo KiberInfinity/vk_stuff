@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AuViDL [vkopt module]
 // @namespace    http://tampermonkey.net/
-// @version      3.0.7.9
+// @version      3.0.7.10
 // @description  Опции скачивания аудио и видео
 // @author       KiberInfinity
 // @match        https://vk.com/*
@@ -130,6 +130,9 @@ vkopt['audl'] = {
                }
             }
          }
+      },
+      Extra:{
+         mp3u8:{default_value:true}
       }
    },
    onInit: function(){
@@ -154,6 +157,7 @@ vkopt['audl'] = {
             if (obj && obj.get_url)
                obj.url = url;
          })
+
       }
    },
    onAudioRowItems: function(audioEl, audioObject, audio){
@@ -192,6 +196,15 @@ vkopt['audl'] = {
       }
       return items;
    },
+   insertSizeInfoWrap: function(row, vals){
+      var dur = geByClass1('audio_row__info', row);
+      var sz_info = se(vk_lib.tpl_process(vkopt.audl.tpls['size_info'], vals));
+      if (dur && !hasClass('vk_with_au_info',dur.parentNode)){
+         dur.parentNode.insertBefore(sz_info, dur);
+         addClass(dur.parentNode, 'vk_with_au_info');
+      }
+      return sz_info;
+   },
    processNode: function(node, params){
       if (!vkopt.settings.get('audio_dl')) return;
       if (!vkopt.audl.__full_audio_info_cache)
@@ -204,7 +217,6 @@ vkopt['audl'] = {
 
       for (var i = 0; i < audios.length; i++){
          var row = audios[i];
-         var dur = geByClass1('audio_row__info', row);
          var info = null;
          try {
             info = JSON.parse(row.dataset["audio"]);
@@ -236,13 +248,6 @@ vkopt['audl'] = {
             addClass(row, 'vk_info_loaded');
          }
 
-         var sz_info = se(vk_lib.tpl_process(vkopt.audl.tpls['size_info'], {
-               id: info_obj.fullId,
-               url: info_obj.url || '',
-               size: sz_labels.size || '? Mb',
-               kbps: sz_labels.kbps || '? Kbps'
-            }));
-
          // Инфа о размере/битрейте
          if (vkopt.settings.get('audio_size_info')){
             if (!vkopt.settings.get('audio_wait_hover') && info_obj.url)
@@ -255,10 +260,12 @@ vkopt['audl'] = {
                   200
                );
 
-            if (dur && !hasClass('vk_with_au_info',dur.parentNode)){
-               dur.parentNode.insertBefore(sz_info, dur);
-               addClass(dur.parentNode, 'vk_with_au_info');
-            }
+            vkopt.audl.insertSizeInfoWrap(row, {
+               id: info_obj.fullId,
+               url: info_obj.url || '',
+               size: sz_labels.size || '? Mb',
+               kbps: sz_labels.kbps || '? Kbps'
+            });
          }
       }
 
@@ -399,15 +406,26 @@ vkopt['audl'] = {
          for (var i = 0; i < els.length; i++){
             var el = els[i];
             var info = AudioUtils.asObject(AudioUtils.getAudioFromEl(el));
-            var size_el = geByClass1('vk_audio_size', el);
-            var kbps_el = geByClass1('vk_audio_kbps', el);
+
+
+
 
             if (custom_duration){
                size = size/custom_duration*info.duration
             }
             var sz_info = vkopt.audl.size_to_bitrare(size, info.duration);
-            val(size_el, sz_info.size);
-            val(kbps_el, sz_info.kbps);
+
+            if (!geByClass1('vk_audio_size', el)){
+               vkopt.audl.insertSizeInfoWrap(el, {
+                  id: info.fullId,
+                  url: info.url || '',
+                  size: sz_info.size || '? Mb',
+                  kbps: sz_info.kbps || '? Kbps'
+               });
+            } else {
+               val(geByClass1('vk_audio_size', el), sz_info.size);
+               val(geByClass1('vk_audio_kbps', el), sz_info.kbps);
+            }
 
             el.dataset['kbps'] = sz_info.kbps_raw;
             el.dataset['filesize'] = size;
@@ -455,13 +473,15 @@ vkopt['audl'] = {
             AjGet(url, function(r){
                var base = url.split('?')[0].match(/.+\//)[0];
                var info = [];
-               r.replace(/#EXT-X-KEY:METHOD=([^\r\n]+)[\s\S]*?#EXTINF:(.+?),[\r\n]+(.+\.ts[^\r\n]+)/g,function(s,mtd,dur,lnk){
-                  if (mtd=="NONE")
+               r.replace(/(?:#EXT-X-KEY:METHOD=([^\r\n]+)[\s\S]*?)?#EXTINF:(.+?),[\r\n]+(.+\.ts[^\r\n]+)/g,function(s,mtd,dur,lnk){
+                  if (!mtd || mtd=="NONE")
                      info.push({method:mtd, duration:dur, link:base+lnk})
                });
-               var ts = info[Math.round(info.length/2)];
-               custom_duration = parseFloat(ts.duration);
-               get_size(ts.link);
+               if (info.length){
+                  var ts = info[Math.floor(info.length/2)];
+                  custom_duration = parseFloat(ts.duration);
+                  get_size(ts.link);
+               }
             })
          } else {
             get_size(url);
@@ -482,6 +502,8 @@ vkopt['audl'] = {
          h5proto._setAudioNodeUrl(tmp, url);
       }catch(e){}
       RegExp.prototype.test = orig;
+      if (tmp.src && /\.m3u8/.test(tmp.src) && vkopt.settings.get('mp3u8'))
+         tmp.src = tmp.src.replace(/(\/p\d+\/)[a-f0-9]+\/([a-f0-9]+)\/index.m3u8/,'$1$2.mp3').replace(/(\/c\d+\/[a-z]\d+\/)[a-f0-9]+\/(audios\/[a-f0-9]+)\/index.m3u8/,"$1$2.mp3");
       return tmp.src
    },
    load_audio_urls: function(){
