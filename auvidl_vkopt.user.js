@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AuViDL [vkopt module]
 // @namespace    http://tampermonkey.net/
-// @version      3.0.7.10
+// @version      3.0.7.20
 // @description  Опции скачивания аудио и видео
 // @author       KiberInfinity
 // @match        https://vk.com/*
@@ -147,7 +147,7 @@ vkopt['audl'] = {
       */
       });
       vkopt.audl.load_sizes_cache();
-      vkbrowser.mozilla && vkopt.permissions.update();
+      vk_ext_api.browsers && vk_ext_api.browsers.webext && vkopt.permissions.update();
    },
    onLibFiles: function(fn){
       if (fn == 'audioplayer.js'){
@@ -156,8 +156,15 @@ vkopt['audl'] = {
          Inj.Start('Object.getPrototypeOf(getAudioPlayer()._impl)._isHlsUrl', function(url,obj){
             if (obj && obj.get_url)
                obj.url = url;
-         })
+         });
 
+         Inj.End('AudioUtils.drawAudio', function(state){
+           var obj = this;
+           if (obj.result) {
+              obj.return_result = vkopt_core.mod_str_as_node(obj.result, vkopt_core.plugins.process_node, {source:"drawAudio", state: state});
+              obj.prevent_all = true;
+           }
+         })
       }
    },
    onAudioRowItems: function(audioEl, audioObject, audio){
@@ -494,7 +501,12 @@ vkopt['audl'] = {
    __load_req_num: 1,
    __full_audio_info_cache: {},
    decode_url: function(url){
-      var tmp = {};
+      var n = function(){};
+      var tmp = {
+         removeAttribute: n,
+         setAttribute: n,
+         getAttribute: n
+      };
       var orig = RegExp.prototype.test;
       RegExp.prototype.test = function(){return false}
       try{
@@ -922,7 +934,7 @@ vkopt['videoview'] = {
          </div>
          */
          /*dl_link:
-         <a href="{vals.url}" download="{vals.name}" onclick="return vkopt.videoview.download_file(this)" onmouseover="vkopt.videoview.get_size(this)">{vals.caption}<span class="vk_vid_size_info"></span></a>
+         <a href="{vals.url}" download="{vals.name}" onclick="return vkopt.videoview.download_file(this)" onmouseover="vkopt.videoview.get_size(this, event)">{vals.caption}<span class="vk_vid_size_info"></span></a>
          */
          /*ext_link:
          <a class="vk_vid_external_view" href="{vals.url}">{vals.source_name}</a>
@@ -1097,7 +1109,10 @@ vkopt['videoview'] = {
          vkopt.videoview.update_dl_btn(html);
       });
    },
-   get_size: function(el){
+   get_size: function(el,ev){
+      if (ev && (ev.metaKey || ev.ctrlKey)){
+         el.href = el.href.split('#')[0];
+      }
       if (!el || !el.href || hasClass(el,'size_loaded') || /\.m3u8/.test(el.href)) return;
       var WAIT_TIME = 4000;
       var szel = geByTag1('span', el);
@@ -1441,7 +1456,7 @@ vkopt['videos'] = {
          </div>
          */
          /*wg_dl_item:
-         <a class="videoplayer_settings_menu_sublist_item vk_wg_dl_item" role="menuitemradio" tabindex="0" href="{vals.url}" download="{vals.name}" onclick="return vkopt.videoview.download_file(this)" onmouseover="vkopt.videoview.get_size(this)">
+         <a class="videoplayer_settings_menu_sublist_item vk_wg_dl_item" role="menuitemradio" tabindex="0" href="{vals.url}" download="{vals.name}" onclick="return vkopt.videoview.download_file(this)" onmouseover="vkopt.videoview.get_size(this, event)">
             {vals.caption}
             <span class="vk_vid_size_info"></span>
          </a>
